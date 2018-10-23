@@ -1,0 +1,40 @@
+<!doctype html>
+<head>
+  <link href="main.css" rel="stylesheet">
+</head>
+<body>
+  <!--<div class="header"></div>-->
+  <div class="header-shim"></div>
+  <div class="main">
+    <div class="canvas-container">
+      <canvas id="canvas" height="640" width="640" class="path-canvas"></canvas>
+    </div>
+
+    <div class="buttons">
+      <div id="run" class="button">RUN</div>
+      <div class="label">MAX FLEX</div>
+      <input type="number" id="maxFlex" value="100" min="0">
+      <div class="label">MAX X</div>
+      <input type="number" id="maxX" value="0" min="0">
+      <div class="label">MAX Y</div>
+      <input type="number" id="maxY" value="0" min="0">
+      <div class="label">LAYER</div>
+      <input type="number" id="layer" value="0" min="0" max="0">
+      <div id="display" class="button">DISPLAY</div>
+      <div id="layerLabel" class="label"></div>
+
+    </div>
+
+    <div class="io-container">
+      <div class="input-wrapper">
+        <textarea id="input" class="input"></textarea>
+      </div>
+      <div class="output-wrapper">
+        <textarea id="output" class="output"></textarea>
+      </div>
+    </div>
+
+    <div class="footer"></div>
+  </div>
+  <script src="main.js"></script>
+</body>
