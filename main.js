@@ -30,6 +30,10 @@ a3d.Program.prototype.getMaxY = function() {
   return this.maxY_;
 };
 
+a3d.Program.prototype.getMaxFlex = function() {
+  return this.maxFlex_;
+};
+
 a3d.Program.prototype.getNumberOfLayers = function() {
   return this.layerStarts_.length;
 };
@@ -131,8 +135,8 @@ a3d.Program.prototype.step = function() {
   var pathLength = 0;
   while (distanceAB <= this.maxFlex_ && stepIndex < this.xyCodes_.length) {
     stepCode = this.xyCodes_[stepIndex];
-    stepCode.x = stepCode.x || stepX;
-    stepCode.y = stepCode.y || stepY;
+    stepCode.x = stepCode.x != null ? stepCode.x : stepX;
+    stepCode.y = stepCode.y != null ? stepCode.y : stepY;
     if (stepCode.x > this.maxX_) {
       this.maxX_ = stepCode.x;
     }
@@ -408,6 +412,7 @@ a3d.Main.display = function(e) {
   var moves = a3d.Main.program.getLayer(layerNumber);
   var maxX = a3d.Main.program.getMaxX();
   var maxY = a3d.Main.program.getMaxY();
+  var maxFlex = a3d.Main.program.getMaxFlex();
   if (a3d.Main.canvas.getContext) {
     var ctx = a3d.Main.canvas.getContext('2d');
     var cH = ctx.canvas.height;
@@ -422,14 +427,22 @@ a3d.Main.display = function(e) {
       var x = cW * move.x / maxX;
       var y = cH * move.y / maxY;
       if (i == 0) {
-        console.log("ctx.moveTo(" + x + " , " + y + ");");
         ctx.moveTo(x, y);
       } else {
-        console.log("ctx.lineTo(" + x + " , " + y + ");");
         ctx.lineTo(x, y);
       }
     }
     ctx.stroke();
+
+    ctx.strokeStyle = "#5bcc29";
+    for ( i = 0; i < moves.length; i++) {
+      move = moves[i];
+      x = cW * move.x / maxX;
+      y = cH * move.y / maxY;
+      ctx.beginPath();
+      ctx.arc(x, y, cW * maxFlex / maxX, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
 
     ctx.beginPath();
