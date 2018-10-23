@@ -12,10 +12,14 @@ a3d.Program.prototype.parse = function(code) {
   this.codes_ = [];
   this.xyCodes_ = [];
   this.layerStarts_ = [];
-  this.x_ = 0;
-  this.y_ = 0;
-  this.a_ = 0;
-  this.b_ = 0;
+  this.l_ = {
+    x: 0,
+    y: 0
+  };
+  this.u_ = {
+    x: 0,
+    y: 0
+  };
   this.index_ = 0;
   this.parse_(code);
   this.calculateABaxis();
@@ -121,6 +125,79 @@ a3d.Program.prototype.calculateABaxis = function() {
 };
 
 a3d.Program.prototype.step = function() {
+  // l0 and u0 are where the lower and upper gantry are right now
+  // l1 is the current step (and next position of lower gantry)
+
+  var l1 = this.xyCodes_[this.index_];
+  if (l1.x > this.maxX_) {
+    this.maxX_ = l1.x;
+  }
+  if (l1.y > this.maxY_) {
+    this.maxY_ = l1.y;
+  }
+
+  var dU0L1 = geo.distance(this.u_, l1);
+
+  // Type 5 - Last step in the program
+  if (this.index_ + 1 == this.xyCodes_.length) {
+    this.stepType5_(l1, dU0L1);
+  } else {
+    // Type 1 or 2
+    if (dU0L1 > this.maxFlex_) {
+      this.stepType1or2_(l1, dU0L1);
+    } else {
+      this.stepType3or4_(l1, dU0L1);
+    }
+  }
+  this.u_ = l1.getU();
+  this.l_ = l1.getL();
+};
+
+a3d.Program.prototype.stepType1or2_ = function(l1, dU0L1) {
+  // type 1 or type 2
+  var l2 = this.xyCodes_[this.index_ + 1];
+  var dL1L2 = geo.distance(l1, l2);
+  if (dL1L2 > this.maxFlex_) {
+    this.stepType1_(l1, l2)
+  } else {
+    this.stepType2_(l1, l2)
+  }
+};
+
+a3d.Program.prototype.stepType1_ = function(l1, l2) {
+ var u1 = geo.cutTheCorner(l1, this.l_, l2, this.maxFlex_);
+ l1.setU(u1);
+};
+
+a3d.Program.prototype.stepType2_ = function(l1, l2, dL1L2) {
+  var u1 = geo.cutTheCorner(l1, this.l_, l2, dL1L2);
+  l1.setU(u1);
+};
+
+a3d.Program.prototype.stepType3or4_ = function(l1, dU0L1) {
+  console.log(l1);
+  l1.setU(this.u_);
+};
+
+a3d.Program.prototype.stepType3_ = function() {
+
+};
+
+a3d.Program.prototype.stepType4_ = function() {
+
+};
+
+a3d.Program.prototype.stepType5_ = function(l1, dU0L1) {
+  if (dU0L1 < this.maxFlex_) {
+    // if it is within the max flex distance,
+    // then we don't move U
+    l1.update(this.u_);
+  }
+  var u0 = geo.scaledPointOnLine(this.u_, l1, (dU0L1 - this.maxFlex_) / dU0L1);
+  l1.setU(u0);
+};
+
+a3d.Program.prototype.oldStep = function() {
   var stepIndex = this.index_;
   var stepX = this.x_;
   var stepY = this.y_;
@@ -325,16 +402,40 @@ a3d.Program.G01.prototype.isZ = function() {
   return this.z != null;
 };
 
-var geo = geo || {};
-
-geo.distance = function(x0, y0, x1, y1) {
-  //console.log("x0: " + x0 + ", y0: " + y0 + ", x1: " + x1 + ", y1: " + y1);
-  var d = Math.sqrt(Math.pow(x1-x0, 2) + Math.pow(y1-y0, 2));
-  //console.log("distance: " + d);
-  return d;
+a3d.Program.G01.prototype.setU = function(p) {
+  this.a = p.x;
+  this.b = p.y;
 };
 
-geo.distancePoints = function(p0, p1) {
+a3d.Program.G01.prototype.setL = function(p) {
+  this.x = p.x;
+  this.y = p.y;
+};
+
+a3d.Program.G01.prototype.getU = function() {
+  return {
+    x: this.a,
+    y: this.b
+  }
+};
+
+a3d.Program.G01.prototype.getL = function() {
+  return {
+    x: this.x,
+    y: this.y
+  }
+};
+
+var geo = geo || {};
+
+// geo.distance = function(x0, y0, x1, y1) {
+//   //console.log("x0: " + x0 + ", y0: " + y0 + ", x1: " + x1 + ", y1: " + y1);
+//   var d = Math.sqrt(Math.pow(x1-x0, 2) + Math.pow(y1-y0, 2));
+//   //console.log("distance: " + d);
+//   return d;
+// };
+
+geo.distance = function(p0, p1) {
   return Math.sqrt(Math.pow(p1.x-p0.x, 2) + Math.pow(p1.y-p0.y, 2))
 };
 
