@@ -208,7 +208,7 @@ a3d.Program.prototype.stepType4_ = function(l1, m1Response, dL0L1) {
   var lmNeg1 = this.xyCodes_[m1Response.m1 - 2];
   var um0 = geo.cutTheCorner(m1Response.lm0, lmNeg1, m1Response.lm1, this.maxFlex_);
   var u1 = geo.scaledPointOnLine(this.u_, um0, dL0L1 / m1Response.pathLength);
-  l1.setU(um0);
+  l1.setU(u1);
 };
 
 a3d.Program.prototype.findM1_ = function() {
