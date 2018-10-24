@@ -47,7 +47,6 @@ a3d.Program.prototype.getLayer = function(layerNumber) {
   var end = Math.min(this.layerStarts_[layerNumber], this.codes_.length);
   end = end || this.codes_.length;
   var moves = [];
-  console.log("start: " + start + " , end: " + end);
   for (var i = start; i < end; i++) {
     var code = this.codes_[i];
     if (typeof code != "string") {
@@ -88,7 +87,6 @@ a3d.Program.prototype.getLayer = function(layerNumber) {
     })
   }
 
-  console.log(moves);
   return moves;
 };
 
@@ -135,6 +133,13 @@ a3d.Program.prototype.step = function() {
   if (l1.y > this.maxY_) {
     this.maxY_ = l1.y;
   }
+  if (l1.x > this.maxY_) {
+    this.maxY_ = l1.x;
+  }
+  if (l1.y > this.maxX_) {
+    this.maxX_ = l1.y;
+  }
+
 
   var dU0L1 = geo.distance(this.u_, l1);
 
@@ -144,155 +149,103 @@ a3d.Program.prototype.step = function() {
   } else {
     // Type 1 or 2
     if (dU0L1 > this.maxFlex_) {
-      this.stepType1or2_(l1, dU0L1);
+      this.stepType1or2_(l1);
     } else {
-      this.stepType3or4_(l1, dU0L1);
+      this.stepType3or4_(l1);
     }
   }
   this.u_ = l1.getU();
   this.l_ = l1.getL();
 };
 
-a3d.Program.prototype.stepType1or2_ = function(l1, dU0L1) {
+a3d.Program.prototype.stepType1or2_ = function(l1) {
   // type 1 or type 2
   var l2 = this.xyCodes_[this.index_ + 1];
   var dL1L2 = geo.distance(l1, l2);
   if (dL1L2 > this.maxFlex_) {
     this.stepType1_(l1, l2)
   } else {
-    this.stepType2_(l1, l2)
+    this.stepType2_(l1, l2, dL1L2)
   }
 };
 
 a3d.Program.prototype.stepType1_ = function(l1, l2) {
- var u1 = geo.cutTheCorner(l1, this.l_, l2, this.maxFlex_);
+  var u1 = geo.cutTheCorner(l1, this.l_, l2, this.maxFlex_);
  l1.setU(u1);
 };
 
 a3d.Program.prototype.stepType2_ = function(l1, l2, dL1L2) {
-  var u1 = geo.cutTheCorner(l1, this.l_, l2, dL1L2);
+  var u1 = geo.cutTheCorner(l1, this.l_, l2, dL1L2 / 2);
   l1.setU(u1);
 };
 
-a3d.Program.prototype.stepType3or4_ = function(l1, dU0L1) {
-  console.log(l1);
-  l1.setU(this.u_);
+a3d.Program.prototype.stepType3or4_ = function(l1) {
+  var m1Response = this.findM1_();
+  if (m1Response == null) {
+    // there are no future steps farther than the
+    // max flex distance. Stay where we are.
+    l1.setU(this.u_);
+  } else {
+    var dL0L1 = geo.distance(this.l_, l1);
+    if (m1Response.dLm0Lm1 <= this.maxFlex_) {
+      //type3
+      this.stepType3_(l1, m1Response, dL0L1);
+    } else {
+      //type4
+      this.stepType4_(l1, m1Response, dL0L1);
+    }
+
+  }
 };
 
-a3d.Program.prototype.stepType3_ = function() {
-
+a3d.Program.prototype.stepType3_ = function(l1, m1Response, dL0L1) {
+  var um0 = geo.midpoint(m1Response.lm0, m1Response.lm1);
+  var u1 = geo.scaledPointOnLine(this.u_, um0, dL0L1 / m1Response.pathLength);
+  l1.setU(u1);
 };
 
-a3d.Program.prototype.stepType4_ = function() {
+a3d.Program.prototype.stepType4_ = function(l1, m1Response, dL0L1) {
+  var lmNeg1 = this.xyCodes_[m1Response.m1 - 2];
+  var um0 = geo.cutTheCorner(m1Response.lm0, lmNeg1, m1Response.lm1, this.maxFlex_);
+  var u1 = geo.scaledPointOnLine(this.u_, um0, dL0L1 / m1Response.pathLength);
+  l1.setU(um0);
+};
 
+a3d.Program.prototype.findM1_ = function() {
+  var pathLength = 0;
+  for (var m1 = this.index_; m1 < this.xyCodes_.length; m1++) {
+
+    var lm0 = m1 == this.index_ ? this.l_ : this.xyCodes_[m1 - 1];
+    var lm1 = this.xyCodes_[m1];
+
+    var dLm0Lm1 = geo.distance(lm0, lm1);
+    var dU0Lm1 = geo.distance(this.u_, lm1);
+
+    if (dU0Lm1 > this.maxFlex_) {
+      return {
+        'lm1': lm1,
+        'lm0': lm0,
+        'm1': m1,
+        'pathLength': pathLength,
+        'dLm0Lm1': dLm0Lm1
+      }
+    }
+    pathLength += dLm0Lm1;
+  }
+  return null;
 };
 
 a3d.Program.prototype.stepType5_ = function(l1, dU0L1) {
   if (dU0L1 < this.maxFlex_) {
     // if it is within the max flex distance,
     // then we don't move U
-    l1.update(this.u_);
-  }
-  var u0 = geo.scaledPointOnLine(this.u_, l1, (dU0L1 - this.maxFlex_) / dU0L1);
-  l1.setU(u0);
-};
-
-a3d.Program.prototype.oldStep = function() {
-  var stepIndex = this.index_;
-  var stepX = this.x_;
-  var stepY = this.y_;
-  var newA = this.a_;
-  var newB = this.b_;
-  //console.log("a: " + this.a_);
-  //console.log("b: " + this.b_);
-
-  var stepCode = null;
-  // iterate until we find the first step beyond max distance
-  var distanceAB = 0;
-  var pathLength = 0;
-  while (distanceAB <= this.maxFlex_ && stepIndex < this.xyCodes_.length) {
-    stepCode = this.xyCodes_[stepIndex];
-    stepCode.x = stepCode.x != null ? stepCode.x : stepX;
-    stepCode.y = stepCode.y != null ? stepCode.y : stepY;
-    if (stepCode.x > this.maxX_) {
-      this.maxX_ = stepCode.x;
-    }
-    if (stepCode.y > this.maxY_) {
-      this.maxY_ = stepCode.y;
-    }
-    distanceAB = geo.distance(this.a_, this.b_, stepCode.x, stepCode.y);
-    pathLength += geo.distance(stepX, stepY, stepCode.x, stepCode.y);
-    stepX = stepCode.x;
-    stepY = stepCode.y;
-    stepIndex++;
-  }
-
-  // if no more distances > Max Flex then we don't need to move AB anymore.
-  if (distanceAB > this.maxFlex_) {
-
-    var stepCount = stepIndex - this.index_;
-    var abPoint;
-    if (stepCount > 1) {
-      // Here we know that it is either type 3 or 4
-
-      // Calculate the scaling factor
-      var firstStepCode = this.xyCodes_[this.index_];
-      var firstStepLength = geo.distance(this.x_, this.y_, firstStepCode.x, firstStepCode.y);
-      var scalingFactor = firstStepLength/pathLength;
-
-      var m0 = this.xyCodes_[stepIndex - 2];
-      var m1 = stepCode;
-      var mDistance = geo.distance(m0.x, m0.y, m1.x, m1.y);
-
-      if (mDistance < this.maxFlex_) {
-        // type 3
-        //console.log("type 3");
-        var midpoint = geo.midpoint(m0, m1);
-        abPoint = geo.scaledPointOnLine(firstStepCode, midpoint, scalingFactor);
-        newA = abPoint.x;
-        newB = abPoint.y;
-      } else {
-        //console.log("type 4");
-        var mNeg1 = this.xyCodes_[stepIndex - 3];
-        abPoint = geo.cutTheCorner(mNeg1, m0, m1, this.maxFlex_);
-        newA = abPoint.x;
-        newB = abPoint.y;
-      }
-    } else {
-      // type 1 or 2 or is the last xy instruction
-      if (stepIndex == this.xyCodes_.length) {
-        //console.log("last item");
-        // here it is the last xy instruction, therefore we want it to travel the minimum distance to this point.
-        // TODO
-      } else {
-        //console.log("type 1 or 2");
-        var nextCode = this.xyCodes_[stepIndex];
-        var d = geo.distancePoints(stepCode, nextCode);
-        if (d > this.maxFlex_) {
-          //console.log("type 1");
-        } else {
-          //console.log("type 2");
-        }
-        var cutTheCornerDistance = d > this.maxFlex_ ? this.maxFlex_ : d/2;
-        abPoint = geo.cutTheCorner(stepCode, {x: this.x_, y: this.y_}, nextCode, cutTheCornerDistance);
-        newA = abPoint.x;
-        newB = abPoint.y;
-      }
-
-    }
+    l1.setU(this.u_);
   } else {
-    //console.log("already close");
+    var u0 = geo.scaledPointOnLine(this.u_, l1, (dU0L1 - this.maxFlex_) / dU0L1);
+    l1.setU(u0);
   }
-
-
-  var code = this.xyCodes_[this.index_];
-  code.a = newA;
-  code.b = newB;
-  this.a_ = code.a;
-  this.b_ = code.b;
-  this.x_ = code.x;
-  this.y_ = code.y;
 };
+
 
 
 a3d.Program.prototype.parse_ = function(code) {
@@ -428,13 +381,6 @@ a3d.Program.G01.prototype.getL = function() {
 
 var geo = geo || {};
 
-// geo.distance = function(x0, y0, x1, y1) {
-//   //console.log("x0: " + x0 + ", y0: " + y0 + ", x1: " + x1 + ", y1: " + y1);
-//   var d = Math.sqrt(Math.pow(x1-x0, 2) + Math.pow(y1-y0, 2));
-//   //console.log("distance: " + d);
-//   return d;
-// };
-
 geo.distance = function(p0, p1) {
   return Math.sqrt(Math.pow(p1.x-p0.x, 2) + Math.pow(p1.y-p0.y, 2))
 };
@@ -465,14 +411,11 @@ geo.cutTheCorner = function(originPoint, point1, point2, distance) {
   var lAngle = a1 > a2 ? a1 : a2;
   var sAngle = a1 > a2 ? a2 : a1;
   var bisectedAngle = (lAngle - sAngle)/2 + sAngle;
-  var a = bisectedAngle >= Math.PI ? bisectedAngle - Math.PI : bisectedAngle;
-  //console.log(a * 180/Math.PI);
+  var a = (bisectedAngle - sAngle) >= Math.PI / 2 ? bisectedAngle : bisectedAngle - Math.PI;
   var p = {
     x: originPoint.x - distance * Math.cos(a),
     y: originPoint.y - distance * Math.sin(a)
   };
-  //console.log("Bisection Point:");
-  //console.log(p);
   return p;
 };
 
@@ -480,6 +423,8 @@ geo.getAngle = function(p) {
   var a = Math.atan2(p.y, p.x);
   return a < 0 ? a + 2 * Math.PI : a;
 };
+
+
 
 a3d.Main = {};
 
@@ -509,7 +454,6 @@ a3d.Main.run = function(e) {
 
 a3d.Main.display = function(e) {
   var layerNumber = parseInt(a3d.Main.layerInput.value);
-  console.log(layerNumber);
   var moves = a3d.Main.program.getLayer(layerNumber);
   var maxX = a3d.Main.program.getMaxX();
   var maxY = a3d.Main.program.getMaxY();
@@ -535,15 +479,15 @@ a3d.Main.display = function(e) {
     }
     ctx.stroke();
 
-    ctx.strokeStyle = "#5bcc29";
-    for ( i = 0; i < moves.length; i++) {
-      move = moves[i];
-      x = cW * move.x / maxX;
-      y = cH * move.y / maxY;
-      ctx.beginPath();
-      ctx.arc(x, y, cW * maxFlex / maxX, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    // ctx.strokeStyle = "#5bcc29";
+    // for ( i = 0; i < moves.length; i++) {
+    //   move = moves[i];
+    //   x = cW * move.x / maxX;
+    //   y = cH * move.y / maxY;
+    //   ctx.beginPath();
+    //   ctx.arc(x, y, cW * maxFlex / maxX, 0, Math.PI * 2);
+    //   ctx.stroke();
+    // }
 
 
     ctx.beginPath();
@@ -578,10 +522,66 @@ a3d.Main.runButton.addEventListener("click", a3d.Main.run);
 a3d.Main.displayButton.addEventListener("click", a3d.Main.display);
 
 
+a3d.Main.angle1 = 0;
+a3d.Main.angle2 = 0;
+a3d.Main.origin = {x: 320, y: 320};
+
+var ctx = document.getElementById("canvas").getContext('2d');
+ctx.id = "tracking id";
+
+var COLOR_TEAL = "#008080";
+
+var COLOR_GREEN = "#5bcc29";
+
+var COLOR_PURPLE = "#804876";
+
+var run = true;
+a3d.Main.testAngle = function() {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  var a1 = a3d.Main.angle1 > 360 ? a3d.Main.angle1 - 360 : a3d.Main.angle1;
+  var a2 = a3d.Main.angle2 > 360 ? a3d.Main.angle2 - 360 : a3d.Main.angle2;
+  var p0 = a3d.Main.origin;
+  var p1 = {
+    x: p0.x - 200 * Math.cos(Math.PI * a1 / 180),
+    y: p0.y - 200 * Math.sin(Math.PI * a1 / 180)
+  };
+  var p2 = {
+    x: p0.x - 200 * Math.cos(Math.PI * a2 / 180),
+    y: p0.y - 200 * Math.sin(Math.PI * a2 / 180)
+  };
+  var p3 = geo.cutTheCorner(p0, p1, p2, 100);
+
+  a3d.Main.drawLine(p0, p1, COLOR_TEAL);
+  a3d.Main.drawLine(p0, p2, COLOR_TEAL);
+  a3d.Main.drawLine(p0, p3, COLOR_PURPLE);
+
+  ctx.strokeStyle = COLOR_GREEN;
+  ctx.beginPath();
+  ctx.arc(p0.x, p0.y, 100, 0, Math.PI * 2);
+  ctx.stroke();
+
+  a3d.Main.angle1 += 15;
+  if (a3d.Main.angle1 > a3d.Main.angle2 + 360) {
+    a3d.Main.angle2 += 15;
+    a3d.Main.angle1 = a3d.Main.angle2;
+  }
+  run=false;
+
+};
+
+a3d.Main.drawLine = function(p0, p1, color) {
+
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  ctx.lineTo(p1.x, p1.y);
+  ctx.stroke();
 
 
+};
 
 
+//a3d.Main.displayButton.addEventListener("click", a3d.Main.testAngle);
 
 
 
