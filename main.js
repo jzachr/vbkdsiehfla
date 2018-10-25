@@ -55,7 +55,10 @@ a3d.Program.prototype.getLayer = function(layerNumber) {
           x: code.x,
           y: code.y,
           a: code.a,
-          b: code.b
+          b: code.b,
+          m: code.m,
+          type_: code.type_,
+          text: code.toString()
         })
       }
     }
@@ -70,7 +73,10 @@ a3d.Program.prototype.getLayer = function(layerNumber) {
           x: code.x,
           y: code.y,
           a: code.a,
-          b: code.b
+          b: code.b,
+          m: code.m,
+          type_: code.type_,
+          text: code.toString()
         };
         break;
       }
@@ -83,26 +89,23 @@ a3d.Program.prototype.getLayer = function(layerNumber) {
       x: 0,
       y: 0,
       a: 0,
-      b: 0
+      b: 0,
+      m: null,
+      text: "Starting Point"
     })
   }
 
   return moves;
 };
 
+
+
 a3d.Program.prototype.buildOutput_ = function() {
   var s = "";
   for (var i = 0; i < this.codes_.length; i++) {
     var code = this.codes_[i];
     if (typeof code != "string") {
-      var line = "G01"
-        + (code.x == null ? "" : " X" + code.x.toFixed(3))
-        + (code.y == null ? "" : " Y" + code.y.toFixed(3))
-        + (code.z == null ? "" : " Z" + code.z.toFixed(3))
-        + (code.a == null ? "" : " A" + code.a.toFixed(3))
-        + (code.b == null ? "" : " B" + code.b.toFixed(3))
-        + (code.c == null ? "" : " C" + code.c.toFixed(4))
-        + (code.f == null ? "" : " F" + code.f.toFixed(0));
+      var line = code.toString();
       s = s.concat(line, "\n")
     } else {
       s = s.concat(code, "\n")
@@ -172,11 +175,13 @@ a3d.Program.prototype.stepType1or2_ = function(l1) {
 a3d.Program.prototype.stepType1_ = function(l1, l2) {
   var u1 = geo.cutTheCorner(l1, this.l_, l2, this.maxFlex_);
  l1.setU(u1);
+ l1.type_ = 1;
 };
 
 a3d.Program.prototype.stepType2_ = function(l1, l2, dL1L2) {
   var u1 = geo.cutTheCorner(l1, this.l_, l2, dL1L2 / 2);
   l1.setU(u1);
+  l1.type_ = 2;
 };
 
 a3d.Program.prototype.stepType3or4_ = function(l1) {
@@ -202,6 +207,8 @@ a3d.Program.prototype.stepType3_ = function(l1, m1Response, dL0L1) {
   var um0 = geo.midpoint(m1Response.lm0, m1Response.lm1);
   var u1 = geo.scaledPointOnLine(this.u_, um0, dL0L1 / m1Response.pathLength);
   l1.setU(u1);
+  l1.m = m1Response.m1;
+  l1.type_ = 3;
 };
 
 a3d.Program.prototype.stepType4_ = function(l1, m1Response, dL0L1) {
@@ -209,6 +216,8 @@ a3d.Program.prototype.stepType4_ = function(l1, m1Response, dL0L1) {
   var um0 = geo.cutTheCorner(m1Response.lm0, lmNeg1, m1Response.lm1, this.maxFlex_);
   var u1 = geo.scaledPointOnLine(this.u_, um0, dL0L1 / m1Response.pathLength);
   l1.setU(u1);
+  l1.m = m1Response.m1;
+  l1.type_ = 4;
 };
 
 a3d.Program.prototype.findM1_ = function() {
@@ -240,9 +249,11 @@ a3d.Program.prototype.stepType5_ = function(l1, dU0L1) {
     // if it is within the max flex distance,
     // then we don't move U
     l1.setU(this.u_);
+    l1.type_ = 6;
   } else {
     var u0 = geo.scaledPointOnLine(this.u_, l1, (dU0L1 - this.maxFlex_) / dU0L1);
     l1.setU(u0);
+    l1.type_ = 5;
   }
 };
 
@@ -345,6 +356,8 @@ a3d.Program.G01 = function() {
   this.b = null;
   this.c = null;
   this.f = null;
+  this.m = null;
+  this.type_ = null;
 };
 
 a3d.Program.G01.prototype.isXY = function() {
@@ -377,6 +390,20 @@ a3d.Program.G01.prototype.getL = function() {
     x: this.x,
     y: this.y
   }
+};
+
+a3d.Program.G01.prototype.toString = function() {
+  var line = "G01"
+    + (this.x == null ? "" : " X" + this.x.toFixed(3))
+    + (this.y == null ? "" : " Y" + this.y.toFixed(3))
+    + (this.z == null ? "" : " Z" + this.z.toFixed(3))
+    + (this.a == null ? "" : " A" + this.a.toFixed(3))
+    + (this.b == null ? "" : " B" + this.b.toFixed(3))
+    + (this.c == null ? "" : " C" + this.c.toFixed(4))
+    + (this.f == null ? "" : " F" + this.f.toFixed(0))
+    + (this.type_ == null ? "" : " ; type: " + this.type_);
+
+  return line;
 };
 
 var geo = geo || {};
@@ -469,7 +496,8 @@ a3d.Main.run = function(e) {
 
 a3d.Main.display = function(e) {
   var layerNumber = parseInt(a3d.Main.layerInput.value);
-  var moves = a3d.Main.program.getLayer(layerNumber);
+  a3d.Main.moves = a3d.Main.program.getLayer(layerNumber);
+  var moves = a3d.Main.moves;
   var maxX = a3d.Main.program.getMaxX();
   var maxY = a3d.Main.program.getMaxY();
   var maxFlex = a3d.Main.program.getMaxFlex();
@@ -491,6 +519,11 @@ a3d.Main.display = function(e) {
       } else {
         ctx.lineTo(x, y);
       }
+      var newlineElement = document.createElement("div");
+      newlineElement.id = "layer-code-" + i;
+      newlineElement.innerText = move.text;
+      newlineElement.classList.add("layer-code");
+      a3d.Main.layerCodes.appendChild(newlineElement);
     }
     ctx.stroke();
 
@@ -521,7 +554,91 @@ a3d.Main.display = function(e) {
     }
     ctx.stroke();
   }
-  a3d.Main.layerLabel.innerText = "Showing layer " + layerNumber + " out of " + a3d.Main.program.getNumberOfLayers();
+  a3d.Main.layerLabel.innerText = layerNumber + " of " + a3d.Main.program.getNumberOfLayers();
+};
+
+a3d.Main.drawCode = function(e) {
+  var el = e.target;
+  var parts = el.id.split("-");
+  var index = parseInt(parts[parts.length - 1]);
+
+  var moves = a3d.Main.moves;
+  var maxX = a3d.Main.program.getMaxX();
+  var maxY = a3d.Main.program.getMaxY();
+  var cH = ctx.canvas.height;
+  var cW = ctx.canvas.width;
+
+  ctx.clearRect(0, 0, cW, cH);
+
+  console.log(index);
+
+  if (index == 0) {
+    return;
+  }
+
+  var m1 = moves[index];
+  if (m1.type_ == 1 || m1.type_ == 2) {
+    var m0 = moves[index - 1];
+    var m2 = null;
+    if (index < moves.length) {
+      m2 = moves[index + 1];
+    }
+    ctx.beginPath();
+    ctx.strokeStyle = COLOR_TEAL;
+    ctx.moveTo(cW * m0.x / maxX, cH * m0.y / maxY);
+    ctx.lineTo(cW * m1.x / maxX, cH * m1.y / maxY);
+    if (m2 != null) {
+      console.log("showing m2");
+      console.log(m2);
+      ctx.lineTo(cW * m2.x / maxX, cH * m2.y / maxY);
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = COLOR_PURPLE;
+    ctx.moveTo(cW * m0.a / maxX, cH * m0.b / maxY);
+    ctx.lineTo(cW * m1.a / maxX, cH * m1.b / maxY);
+    ctx.stroke();
+
+    ctx.strokeStyle = COLOR_TEAL;
+    ctx.beginPath();
+    ctx.arc(cW * m0.x / maxX, cH * m0.y / maxY, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = COLOR_PURPLE;
+    ctx.beginPath();
+    ctx.arc(cW * m0.a / maxX, cH * m0.b / maxY, 5, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    var m0 = moves[index -1 ];
+    ctx.beginPath();
+    ctx.strokeStyle = COLOR_TEAL;
+    ctx.moveTo(cW * m0.x / maxX, cH * m0.y / maxY);
+
+    for (var i = index; i <= m1.m + 1; i++ ) {
+      var move = moves[i];
+      ctx.lineTo(cW * move.x / maxX, cH * move.y / maxY);
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = COLOR_PURPLE;
+    ctx.moveTo(cW * m0.a / maxX, cH * m0.b / maxY);
+
+    for (i = index; i <= m1.m; i++ ) {
+      move = moves[i];
+      ctx.lineTo(cW * move.a / maxX, cH * move.b / maxY);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = COLOR_TEAL;
+    ctx.beginPath();
+    ctx.arc(cW * m0.x / maxX, cH * m0.y / maxY, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = COLOR_PURPLE;
+    ctx.beginPath();
+    ctx.arc(cW * m0.a / maxX, cH * m0.b / maxY, 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 };
 
 a3d.Main.canvas = document.getElementById("canvas");
@@ -535,10 +652,11 @@ a3d.Main.maxYInput = document.getElementById("maxY");
 a3d.Main.layerInput = document.getElementById("layer");
 a3d.Main.layerLabel = document.getElementById("layerLabel");
 a3d.Main.circlesCheckbox = document.getElementById("circles");
+a3d.Main.layerCodes = document.getElementById("layer-codes");
 
 a3d.Main.runButton.addEventListener("click", a3d.Main.run);
 a3d.Main.displayButton.addEventListener("click", a3d.Main.display);
-
+a3d.Main.layerCodes.addEventListener("click", a3d.Main.drawCode);
 
 a3d.Main.angle1 = 0;
 a3d.Main.angle2 = 0;

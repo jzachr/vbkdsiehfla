@@ -69,14 +69,51 @@ body {
 }
 
 .canvas-container {
-  width: 640px;
+  width: 960px;
   height: 640px;
   margin-right: auto;
   margin-left: auto;
+  position: relative;
 }
 
 .path-canvas {
   background-color: white;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#layer-codes-container {
+  width: 308px;
+  height: 638px;
+  border: black solid 1px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  overflow: scroll;
+}
+
+#layer-codes {
+
+}
+
+.layer-code {
+  height: 10px;
+  width: auto;
+  font-family: Helvetica, "Arial Narrow";
+  font-size: 8px;
+  margin: 2px;
+  padding-top: 2px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.layer-code:hover {
+  background-color: aquamarine;
+}
+
+.layer-code-selected {
+  background-color: plum;
 }
 
 .io-container {
