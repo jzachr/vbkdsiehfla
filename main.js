@@ -447,7 +447,7 @@ geo.cutTheCorner = function(originPoint, point1, point2, distance) {
   var scalingFactor = 1;
   var angle = lAngle - sAngle;
   if (lAngle - sAngle > Math.PI) {
-    angle = (lAngle - sAngle) - Math.PI;
+    angle = (2 * Math.PI) - (lAngle - sAngle);
   }
   if (angle > Math.PI / 2) {
     scalingFactor = (Math.PI - angle) / (Math.PI / 2)
