@@ -559,6 +559,9 @@ a3d.Main.display = function(e) {
 
 a3d.Main.drawCode = function(e) {
   var el = e.target;
+  if (el === a3d.Main.layerCodes) {
+    return;
+  }
   var parts = el.id.split("-");
   var index = parseInt(parts[parts.length - 1]);
 
