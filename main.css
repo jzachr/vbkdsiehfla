@@ -153,6 +153,10 @@ input {
   display: inline-block;
 }
 
+input#circles {
+  width: 15px;
+}
+
 .button:hover {
   background-color: aquamarine;
 }

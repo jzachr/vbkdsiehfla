@@ -411,11 +411,26 @@ geo.cutTheCorner = function(originPoint, point1, point2, distance) {
   var lAngle = a1 > a2 ? a1 : a2;
   var sAngle = a1 > a2 ? a2 : a1;
   var bisectedAngle = (lAngle - sAngle)/2 + sAngle;
-  var a = (bisectedAngle - sAngle) >= Math.PI / 2 ? bisectedAngle : bisectedAngle - Math.PI;
+  var a = (bisectedAngle - sAngle) >= Math.PI / 2 ? bisectedAngle - Math.PI: bisectedAngle;
+  if (a < 0) {
+    a = (2*Math.PI) + a;
+  }
+  console.log("lAngle: " + lAngle * 180/Math.PI + ", sAngle: " + sAngle * 180/Math.PI + ", a: " + a * 180/Math.PI);
+
+  var scalingFactor = 1;
+  var angle = lAngle - sAngle;
+  if (lAngle - sAngle > Math.PI) {
+    angle = (lAngle - sAngle) - Math.PI;
+  }
+  if (angle > Math.PI / 2) {
+    scalingFactor = (Math.PI - angle) / (Math.PI / 2)
+  }
+  console.log("Scaling factor: " + scalingFactor);
   var p = {
-    x: originPoint.x - distance * Math.cos(a),
-    y: originPoint.y - distance * Math.sin(a)
+    x: originPoint.x + scalingFactor * distance * Math.cos(a),
+    y: originPoint.y + scalingFactor * distance * Math.sin(a)
   };
+  //console.log(p);
   return p;
 };
 
@@ -479,15 +494,17 @@ a3d.Main.display = function(e) {
     }
     ctx.stroke();
 
-    // ctx.strokeStyle = "#5bcc29";
-    // for ( i = 0; i < moves.length; i++) {
-    //   move = moves[i];
-    //   x = cW * move.x / maxX;
-    //   y = cH * move.y / maxY;
-    //   ctx.beginPath();
-    //   ctx.arc(x, y, cW * maxFlex / maxX, 0, Math.PI * 2);
-    //   ctx.stroke();
-    // }
+    if (a3d.Main.circlesCheckbox.checked) {
+      ctx.strokeStyle = "#5bcc29";
+      for ( i = 0; i < moves.length; i++) {
+        move = moves[i];
+        x = cW * move.x / maxX;
+        y = cH * move.y / maxY;
+        ctx.beginPath();
+        ctx.arc(x, y, cW * maxFlex / maxX, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
 
 
     ctx.beginPath();
@@ -517,6 +534,7 @@ a3d.Main.maxXInput = document.getElementById("maxX");
 a3d.Main.maxYInput = document.getElementById("maxY");
 a3d.Main.layerInput = document.getElementById("layer");
 a3d.Main.layerLabel = document.getElementById("layerLabel");
+a3d.Main.circlesCheckbox = document.getElementById("circles");
 
 a3d.Main.runButton.addEventListener("click", a3d.Main.run);
 a3d.Main.displayButton.addEventListener("click", a3d.Main.display);
@@ -576,7 +594,6 @@ a3d.Main.drawLine = function(p0, p1, color) {
   ctx.moveTo(p0.x, p0.y);
   ctx.lineTo(p1.x, p1.y);
   ctx.stroke();
-
 
 };
 
