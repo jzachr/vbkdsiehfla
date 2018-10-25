@@ -214,6 +214,7 @@ a3d.Program.prototype.stepType3_ = function(l1, m1Response, dL0L1) {
 a3d.Program.prototype.stepType4_ = function(l1, m1Response, dL0L1) {
   var lmNeg1 = this.xyCodes_[m1Response.m1 - 2];
   var um0 = geo.cutTheCorner(m1Response.lm0, lmNeg1, m1Response.lm1, this.maxFlex_);
+  console.log("scaling factor for type 4: " + dL0L1 / m1Response.pathLength);
   var u1 = geo.scaledPointOnLine(this.u_, um0, dL0L1 / m1Response.pathLength);
   l1.setU(u1);
   l1.m = m1Response.m1;
@@ -229,6 +230,7 @@ a3d.Program.prototype.findM1_ = function() {
 
     var dLm0Lm1 = geo.distance(lm0, lm1);
     var dU0Lm1 = geo.distance(this.u_, lm1);
+    pathLength += dLm0Lm1;
 
     if (dU0Lm1 > this.maxFlex_) {
       return {
@@ -239,7 +241,6 @@ a3d.Program.prototype.findM1_ = function() {
         'dLm0Lm1': dLm0Lm1
       }
     }
-    pathLength += dLm0Lm1;
   }
   return null;
 };
