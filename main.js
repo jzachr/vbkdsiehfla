@@ -471,6 +471,10 @@ geo.getAngle = function(p) {
 a3d.Main = {};
 
 a3d.Main.run = function(e) {
+  while (a3d.Main.layerCodes.firstChild) {
+    a3d.Main.layerCodes.removeChild(a3d.Main.layerCodes.firstChild);
+  }
+
   var inputCode = a3d.Main.inputBox.value;
   var maxX = parseInt(a3d.Main.maxXInput.value);
   var maxY = parseInt(a3d.Main.maxYInput.value);
