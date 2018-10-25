@@ -577,7 +577,7 @@ a3d.Main.drawCode = function(e) {
   }
 
   var m1 = moves[index];
-  if (m1.type_ == 1 || m1.type_ == 2) {
+  if (m1.type_ == 1 || m1.type_ == 2 || m1.type_ == 5) {
     var m0 = moves[index - 1];
     var m2 = null;
     if (index < moves.length) {
@@ -623,12 +623,14 @@ a3d.Main.drawCode = function(e) {
     ctx.beginPath();
     ctx.strokeStyle = COLOR_PURPLE;
     ctx.moveTo(cW * m0.a / maxX, cH * m0.b / maxY);
-
-    for (i = index; i <= m1.m; i++ ) {
-      move = moves[i];
-      ctx.lineTo(cW * move.a / maxX, cH * move.b / maxY);
-    }
+    ctx.lineTo(cW * m1.a / maxX, cH * m1.b / maxY);
     ctx.stroke();
+
+    // for (i = index; i <= m1.m; i++ ) {
+    //   move = moves[i];
+    //   ctx.lineTo(cW * move.a / maxX, cH * move.b / maxY);
+    // }
+    // ctx.stroke();
 
     ctx.strokeStyle = COLOR_TEAL;
     ctx.beginPath();
